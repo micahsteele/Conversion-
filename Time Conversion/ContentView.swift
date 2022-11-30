@@ -8,74 +8,59 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var time = 0.0
-    @State private var inputUnit = ""
-    @State private var outputUnit = ""
+    @State private var input = 100.0
+    @State private var selectedUnits = 0
+    @State private var inputUnit: Dimension = UnitLength.meters
+    @State private var outputUnit: Dimension = UnitLength.kilometers
     @FocusState private var inputIsFocused: Bool
+    
+    let conversions = ["Distance", "Mass", "Temperature", "Time"]
+    
+    let unitTypes = [
+        [UnitLength.feet, UnitLength.kilometers, UnitLength.miles, UnitLength.meters, UnitLength.yards],
+        [UnitMass.grams, UnitMass.kilograms, UnitMass.ounces, UnitMass.pounds],
+        [UnitTemperature.celsius, UnitTemperature.fahrenheit, UnitTemperature.kelvin],
+        [UnitDuration.seconds, UnitDuration.minutes, UnitDuration.hours]
+    ]
         
-    let timeType = ["Seconds", "Minutes", "Hours", "Days", "Weeks"]
+    let formatter: MeasurementFormatter
     
     var result: String {
-        let inputToMinuteMultiplier: Double
-        let minuteToOutputMultiplier: Double
-        
-        switch inputUnit {
-        case "Minutes":
-            inputToMinuteMultiplier = 60
-        case "Hours":
-            inputToMinuteMultiplier = 3_600
-        case "Days":
-            inputToMinuteMultiplier = 86_400
-        case "Weeks":
-            inputToMinuteMultiplier = 604_800
-        default:
-            inputToMinuteMultiplier = 1
-        }
-        
-        switch outputUnit {
-        case "Minutes":
-            minuteToOutputMultiplier = 0.016_666_7
-        case "Hours":
-            minuteToOutputMultiplier = 0.000_277_778
-        case "Days":
-            minuteToOutputMultiplier = 0.000_011_574
-        case "Weeks":
-            minuteToOutputMultiplier = 0.000_001_653_4
-        default:
-            minuteToOutputMultiplier = 1
-        }
-        
-        let inputInMinutes = time * inputToMinuteMultiplier
-        let output = inputInMinutes * minuteToOutputMultiplier
-        
-        let outputString = output.formatted()
-        return "\(outputString) \(outputUnit.lowercased())"
+        let inputMeasurement = Measurement(value: input, unit: inputUnit)
+        let outputMeasurement = inputMeasurement.converted(to: outputUnit)
+        return formatter.string(from: outputMeasurement)
     }
-
+    
     var body: some View {
         NavigationView {
             Form {
                 Section {
-                    TextField("Time input", value: $time, format: .number)
+                    TextField("Time input", value: $input, format: .number)
                         .keyboardType(.numberPad)
                         .focused($inputIsFocused)
-                    Picker("Convert From:", selection: $inputUnit) {
-                        ForEach(timeType, id: \.self) {
-                            Text("\($0)")
-                        }
+                    } header: {
+                        Text("Amount to Convert")
                     }
-                } header: {
-                    Text("Input")
+                
+                Picker("Conversions:", selection: $selectedUnits) {
+                    ForEach(0..<conversions.count) {
+                        Text(conversions[$0])
+                    }
+                }
+                Picker("Convert From", selection: $inputUnit) {
+                            ForEach(unitTypes[selectedUnits], id: \.self) {
+                                Text(formatter.string(from: $0).capitalized)
+                            }
+                }
+                Picker("Convert To", selection: $outputUnit) {
+                            ForEach(unitTypes[selectedUnits], id: \.self) {
+                                Text(formatter.string(from: $0).capitalized)
+                            }
                 }
                 
                 Section {
                     Text("\(result)")
-                    Picker("Temp Input", selection: $outputUnit) {
-                        ForEach(timeType, id: \.self) {
-                            Text("\($0)")
-                        }
-                    }
-                } header : {
+                    } header : {
                     Text("Result")
                 }
             }
@@ -89,12 +74,22 @@ struct ContentView: View {
                     }
                 }
             }
+            onChange(of: selectedUnits) { newSelection in
+                let units = unitTypes[newSelection]
+                inputUnit = units[0]
+                outputUnit = units[1]
+            }
         }
     }
+    init() {
+        formatter = MeasurementFormatter()
+        formatter.unitOptions = .providedUnit
+        formatter.unitStyle = .long
 }
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    
+    struct ContentView_Previews: PreviewProvider {
+        static var previews: some View {
+            ContentView()
+        }
     }
 }
